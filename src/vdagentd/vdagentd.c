@@ -208,6 +208,9 @@ static void do_client_monitors(VirtioPort *vport, int port_nr,
     /* Store monitor config to send to agents when they connect */
     size = sizeof(VDAgentMonitorsConfig) +
            new_monitors->num_of_monitors * sizeof(VDAgentMonConfig);
+    if (new_monitors->flags & VD_AGENT_CONFIG_MONITORS_FLAG_PHYSICAL_SIZE) {
+        size += new_monitors->num_of_monitors * sizeof(VDAgentMonitorMM);
+    }
     if (message_header->size != size) {
         syslog(LOG_ERR, "invalid message size for VDAgentMonitorsConfig");
         return;
