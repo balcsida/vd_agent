@@ -7,6 +7,7 @@ Documentation=man:spice-vdagent(1)
 ConditionPathExists=/run/spice-vdagentd/spice-vdagent-sock
 
 # Ensure display server is already running
+PartOf=graphical-session.target
 After=graphical-session.target
 
 [Service]
