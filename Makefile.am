@@ -158,6 +158,10 @@ initdir = $(sysconfdir)/rc.d/init.d
 init_SCRIPTS = $(top_srcdir)/data/spice-vdagentd
 endif
 
+.PHONY: install-systemd uninstall-systemd
+
+install-systemd uninstall-systemd: ;
+
 if INIT_SCRIPT_SYSTEMD
 systemdunitdir = $(SYSTEMDSYSTEMUNITDIR)
 systemdunit_DATA = \
@@ -173,6 +177,14 @@ udevrules_DATA = $(top_srcdir)/data/70-spice-vdagentd.rules
 
 tmpfilesdir = $(prefix)/lib/tmpfiles.d
 tmpfiles_DATA = $(top_srcdir)/data/tmpfiles.d/spice-vdagentd.conf
+
+install-systemd:
+	$(MKDIR_P) $(DESTDIR)$(SYSTEMDUSERUNITDIR)/graphical-session.target.wants
+	ln -sf ../spice-vdagent.service $(DESTDIR)$(SYSTEMDUSERUNITDIR)/graphical-session.target.wants/spice-vdagent.service
+
+uninstall-systemd:
+	rm -f $(DESTDIR)$(SYSTEMDUSERUNITDIR)/graphical-session.target.wants/spice-vdagent.service
+
 endif
 
 manpagedir = $(mandir)/man1
@@ -204,3 +216,7 @@ tests_test_device_info_CFLAGS = $(src_spice_vdagent_CFLAGS)
 check_PROGRAMS += tests/test-device-info
 
 check_PROGRAMS += tests/test-termination
+
+install-data-hook: install-systemd
+
+uninstall-hook: uninstall-systemd

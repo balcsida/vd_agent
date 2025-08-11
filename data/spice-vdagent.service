@@ -11,6 +11,3 @@ After=graphical-session.target
 
 [Service]
 ExecStart=/usr/bin/spice-vdagent -x
-
-[Install]
-WantedBy=graphical-session.target
