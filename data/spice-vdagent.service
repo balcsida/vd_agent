@@ -12,3 +12,7 @@ After=graphical-session.target
 
 [Service]
 ExecStart=/usr/bin/spice-vdagent -x
+
+# spice-vdagent logs via syslog() and to stderr, causing duplicated
+# logs. Instead of sending stderr to the journal, disconnect it
+StandardError=null

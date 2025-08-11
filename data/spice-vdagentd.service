@@ -10,3 +10,7 @@ ExecStart=/usr/sbin/spice-vdagentd -x $SPICE_VDAGENTD_EXTRA_ARGS
 PIDFile=/run/spice-vdagentd/spice-vdagentd.pid
 PrivateTmp=true
 Restart=on-failure
+
+# spice-vdagentd logs via syslog() and to stderr, causing duplicated
+# logs. Instead of sending stderr to the journal, disconnect it
+StandardError=null
