@@ -1,8 +1,8 @@
 [Unit]
 Description=Agent daemon for Spice guests
 Documentation=man:spice-vdagentd(1)
-After=dbus.target
-Requires=spice-vdagentd.socket
+Requires=spice-vdagentd.socket systemd-logind.service
+After=systemd-logind.service
 
 [Service]
 EnvironmentFile=-/etc/sysconfig/spice-vdagentd
