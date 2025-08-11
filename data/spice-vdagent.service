@@ -1,7 +1,12 @@
 [Unit]
 Description=Spice guest session agent
 Documentation=man:spice-vdagent(1)
-# Make sure the display is reachable
+
+# Only run whenever the system daemon is running, since this
+# service isn't useful on its own
+ConditionPathExists=/run/spice-vdagentd/spice-vdagent-sock
+
+# Ensure display server is already running
 After=graphical-session.target
 
 [Service]
