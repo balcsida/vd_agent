@@ -147,12 +147,6 @@ endif
 xdgautostartdir = $(sysconfdir)/xdg/autostart
 xdgautostart_DATA = $(top_srcdir)/data/spice-vdagent.desktop
 
-gdmautostartdir = $(datadir)/gdm/greeter/autostart
-gdmautostart_DATA = $(top_srcdir)/data/spice-vdagent.desktop
-
-gdmautostart2dir = $(datadir)/gdm/autostart/LoginWindow
-gdmautostart2_DATA = $(top_srcdir)/data/spice-vdagent.desktop
-
 if INIT_SCRIPT_RED_HAT
 initdir = $(sysconfdir)/rc.d/init.d
 init_SCRIPTS = $(top_srcdir)/data/spice-vdagentd
