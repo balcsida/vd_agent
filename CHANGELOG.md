@@ -7,7 +7,7 @@ Gitlab markdown format support linking to Issues (#) and Merge requests (!) and 
 
 https://gitlab.freedesktop.org/spice/linux/vd_agent/-/blob/master/CHANGELOG.md
 
-## [Unreleased]
+## [0.23.0] - 2025-09-23
 
 ### Added
 
@@ -194,7 +194,8 @@ https://gitlab.freedesktop.org/spice/linux/vd_agent/-/blob/master/CHANGELOG.md
   more or less supports all parts of the cdagent protocol in spice-protocol
   and spice 0.6.3
 
-[unreleased]: https://gitlab.freedesktop.org/spice/linux/vd_agent/-/compare/spice-vdagent-0.22.1...master
+[unreleased]: https://gitlab.freedesktop.org/spice/linux/vd_agent/-/compare/spice-vdagent-0.23.0...master
+[0.23.0]: https://gitlab.freedesktop.org/spice/linux/vd_agent/-/compare/spice-vdagent-0.22.1...spice-vdagent-0.23.0
 [0.22.1]: https://gitlab.freedesktop.org/spice/linux/vd_agent/-/compare/spice-vdagent-0.22.0...spice-vdagent-0.22.1
 [0.22.0]: https://gitlab.freedesktop.org/spice/linux/vd_agent/-/compare/spice-vdagent-0.21.0...spice-vdagent-0.22.0
 [0.21.0]: https://gitlab.freedesktop.org/spice/linux/vd_agent/-/compare/spice-vdagent-0.20.0...spice-vdagent-0.21.0
