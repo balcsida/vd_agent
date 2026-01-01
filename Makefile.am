@@ -22,7 +22,9 @@ src_spice_vdagent_CFLAGS =			\
 	$(GIO2_CFLAGS)				\
 	$(GTK_CFLAGS)				\
 	$(ALSA_CFLAGS)				\
+	$(WAYLAND_CLIENT_CFLAGS)		\
 	-I$(srcdir)/src				\
+	-I$(builddir)/src/vdagent		\
 	-DUDSCS_NO_SERVER			\
 	$(NULL)
 
@@ -33,6 +35,7 @@ src_spice_vdagent_LDADD =			\
 	$(GIO2_LIBS)				\
 	$(GTK_LIBS)				\
 	$(ALSA_LIBS)				\
+	$(WAYLAND_CLIENT_LIBS)			\
 	$(NULL)
 
 src_spice_vdagent_SOURCES =			\
@@ -49,6 +52,8 @@ src_spice_vdagent_SOURCES =			\
 	src/vdagent/display.h			\
 	src/vdagent/file-xfers.c		\
 	src/vdagent/file-xfers.h		\
+	src/vdagent/kwin.c			\
+	src/vdagent/kwin.h			\
 	src/vdagent/mutter.c			\
 	src/vdagent/mutter.h			\
 	src/vdagent/x11-priv.h			\
@@ -198,6 +203,8 @@ EXTRA_DIST =					\
 	data/spice-vdagentd.socket		\
 	data/tmpfiles.d/spice-vdagentd.conf	\
 	data/xorg.conf.RHEL-5			\
+	src/vdagent/kde-output-device-v2.xml	\
+	src/vdagent/kde-output-management-v2.xml \
 	$(NULL)
 
 DISTCHECK_CONFIGURE_FLAGS =			\
@@ -210,6 +217,39 @@ tests_test_device_info_CFLAGS = $(src_spice_vdagent_CFLAGS)
 check_PROGRAMS += tests/test-device-info
 
 check_PROGRAMS += tests/test-termination
+
+# KWin / Wayland protocol support
+if HAVE_KWIN
+
+BUILT_SOURCES =						\
+	src/vdagent/kde-output-device-v2-client-protocol.h \
+	src/vdagent/kde-output-device-v2-protocol.c	\
+	src/vdagent/kde-output-management-v2-client-protocol.h \
+	src/vdagent/kde-output-management-v2-protocol.c	\
+	$(NULL)
+
+CLEANFILES =						\
+	src/vdagent/kde-output-device-v2-client-protocol.h \
+	src/vdagent/kde-output-device-v2-protocol.c	\
+	src/vdagent/kde-output-management-v2-client-protocol.h \
+	src/vdagent/kde-output-management-v2-protocol.c	\
+	$(NULL)
+
+src_spice_vdagent_SOURCES +=				\
+	src/vdagent/kde-output-device-v2-protocol.c	\
+	src/vdagent/kde-output-management-v2-protocol.c	\
+	$(NULL)
+
+# Wayland protocol code generation rules
+src/vdagent/%-client-protocol.h: src/vdagent/%.xml
+	$(AM_V_GEN)$(MKDIR_P) $(dir $@) && \
+	$(WAYLAND_SCANNER) client-header $< $@
+
+src/vdagent/%-protocol.c: src/vdagent/%.xml
+	$(AM_V_GEN)$(MKDIR_P) $(dir $@) && \
+	$(WAYLAND_SCANNER) private-code $< $@
+
+endif # HAVE_KWIN
 
 install-data-hook: install-systemd
 

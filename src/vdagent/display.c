@@ -42,6 +42,7 @@
 #include "vdagentd-proto.h"
 
 #include "mutter.h"
+#include "kwin.h"
 #include "display.h"
 
 /**
@@ -62,6 +63,7 @@ struct VDAgentDisplay {
     GIOChannel *x11_channel;
     guint io_watch_source_id;
     VDAgentMutterDBus *mutter;
+    VDAgentKWin *kwin;
 };
 
 static gint vdagent_guest_xorg_resolution_compare(gconstpointer a, gconstpointer b)
@@ -166,9 +168,14 @@ void vdagent_display_send_daemon_guest_res(VDAgentDisplay *display, gboolean upd
 
     // Try various backends one after the other.
     // We try Mutter first, because it has a bigger probability of being available.
-    // Second GTK, because if/when we build with GTK4, this is the one that will work best.
+    // Then KWin for KDE Plasma Wayland.
+    // Then GTK, because if/when we build with GTK4, this is the one that will work best.
     // Finally we try X11. This is the default, and should work OK in most circumstances.
     res_array = vdagent_mutter_get_resolutions(display->mutter, &width, &height, &screen_count);
+
+    if (res_array == NULL) {
+        res_array = vdagent_kwin_get_resolutions(display->kwin, &width, &height, &screen_count);
+    }
 
     if (res_array == NULL) {
         res_array = vdagent_gtk_get_resolutions(display, &width, &height, &screen_count);
@@ -289,6 +296,7 @@ VDAgentDisplay* vdagent_display_create(UdscsConnection *vdagentd, int debug, int
     display->connector_mapping = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, NULL);
 
     display->mutter = vdagent_mutter_create(display->connector_mapping);
+    display->kwin = vdagent_kwin_create(display->connector_mapping);
 
     display->x11_channel = g_io_channel_unix_new(vdagent_x11_get_fd(display->x11));
     if (display->x11_channel == NULL) {
@@ -330,6 +338,7 @@ void vdagent_display_destroy(VDAgentDisplay *display, int vdagentd_disconnected)
     vdagent_x11_destroy(display->x11, vdagentd_disconnected);
 
     vdagent_mutter_destroy(display->mutter);
+    vdagent_kwin_destroy(display->kwin);
 
     g_hash_table_destroy(display->connector_mapping);
     g_free(display);
@@ -481,10 +490,31 @@ void vdagent_display_set_monitor_config(VDAgentDisplay *display, VDAgentMonitors
 {
 #ifdef USE_GTK_FOR_MONITORS
     if (GDK_IS_WAYLAND_DISPLAY(gdk_display_get_default())) {
-        // FIXME: there is no equivalent call to set the monitor config under wayland
-        // Send the configuration back - the client need to know the resolution was not taken into account.
+        // Try KWin first (for KDE Plasma)
+        if (vdagent_kwin_is_available(display->kwin)) {
+            int ret = vdagent_kwin_set_monitor_config(display->kwin, mon_config);
+            if (ret == 0) {
+                vdagent_display_send_daemon_guest_res(display, TRUE);
+                return;
+            }
+            syslog(LOG_WARNING, "display: KWin set_monitor_config failed, falling back");
+        }
+
+        // TODO: Add Mutter ApplyMonitorsConfig support here for GNOME Wayland
+
+        // No Wayland backend available - send current resolution back
         vdagent_display_send_daemon_guest_res(display, TRUE);
         return;
+    }
+#else
+    // Try KWin if we're on Wayland without GTK
+    if (vdagent_kwin_is_available(display->kwin)) {
+        int ret = vdagent_kwin_set_monitor_config(display->kwin, mon_config);
+        if (ret == 0) {
+            vdagent_display_send_daemon_guest_res(display, TRUE);
+            return;
+        }
+        syslog(LOG_WARNING, "display: KWin set_monitor_config failed, falling back to X11");
     }
 #endif
     vdagent_x11_set_monitor_config(display->x11, mon_config, fallback);

@@ -126,6 +126,36 @@ PKG_CHECK_MODULES(ALSA, [alsa >= 1.0.22])
 PKG_CHECK_MODULES([DBUS], [dbus-1])
 PKG_CHECK_MODULES([DRM], [libdrm])
 
+dnl Check for Wayland client and KDE protocols for KWin support
+AC_ARG_ENABLE([kwin],
+              [AS_HELP_STRING([--enable-kwin], [Enable KDE KWin output management support (default: auto)])],
+              [enable_kwin="$enableval"],
+              [enable_kwin="auto"])
+
+if test "x$enable_kwin" != "xno"; then
+    PKG_CHECK_MODULES([WAYLAND_CLIENT], [wayland-client >= 1.17],
+                      [have_wayland_client="yes"],
+                      [have_wayland_client="no"])
+    PKG_CHECK_MODULES([WAYLAND_SCANNER], [wayland-scanner >= 1.17],
+                      [have_wayland_scanner="yes"],
+                      [have_wayland_scanner="no"])
+
+    if test "x$have_wayland_client" = "xyes" && test "x$have_wayland_scanner" = "xyes"; then
+        WAYLAND_SCANNER=`$PKG_CONFIG --variable=wayland_scanner wayland-scanner`
+        AC_SUBST(WAYLAND_SCANNER)
+        AC_DEFINE([HAVE_KWIN], [1], [If defined, spice-vdagent will be compiled with KDE KWin support])
+        have_kwin="yes"
+    else
+        if test "x$enable_kwin" = "xyes"; then
+            AC_MSG_ERROR([KWin support explicitly requested, but wayland-client or wayland-scanner not found])
+        fi
+        have_kwin="no"
+    fi
+else
+    have_kwin="no"
+fi
+AM_CONDITIONAL(HAVE_KWIN, test "x$have_kwin" = "xyes")
+
 PKG_CHECK_MODULES([GLIB], [glib-2.0 >= 2.68], [], [
     AC_DEFINE(g_memdup2, g_memdup, [GLib2 < 2.68 compatibility])
 ])
@@ -252,6 +282,7 @@ AC_MSG_NOTICE([
         udevdir:                  ${udevdir}
 
         use GTK+:                 ${with_gtk}
+        KWin support:             ${have_kwin}
 
         Now type 'make' to build $PACKAGE
 
