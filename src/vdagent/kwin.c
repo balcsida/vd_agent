@@ -57,7 +57,7 @@ typedef struct KWinOutput {
     int transform;
     double scale;
     gboolean enabled;
-    GArray *modes;      /* Array of KWinMode */
+    GPtrArray *modes;   /* Array of KWinMode* (heap allocated) */
     KWinMode *current_mode;
     KWinMode *preferred_mode;
     gboolean done;      /* Have we received the 'done' event? */
@@ -80,8 +80,6 @@ struct VDAgentKWin {
 
 /* Forward declarations */
 static void kwin_output_destroy(KWinOutput *output);
-static KWinOutput *kwin_find_output_by_device(VDAgentKWin *kwin,
-                                               struct kde_output_device_v2 *device);
 
 /* ============================================================================
  * Mode listener callbacks
@@ -152,7 +150,7 @@ static void output_handle_current_mode(void *data,
 
     /* Find the mode in our array and mark it as current */
     for (guint i = 0; i < output->modes->len; i++) {
-        KWinMode *mode = &g_array_index(output->modes, KWinMode, i);
+        KWinMode *mode = g_ptr_array_index(output->modes, i);
         if (mode->mode == mode_obj) {
             mode->current = TRUE;
             output->current_mode = mode;
@@ -170,17 +168,12 @@ static void output_handle_mode(void *data,
 {
     KWinOutput *output = data;
 
-    KWinMode mode = {
-        .mode = mode_obj,
-        .width = 0,
-        .height = 0,
-        .refresh = 0,
-        .preferred = FALSE,
-        .current = FALSE,
-    };
+    /* Allocate mode on heap so pointer stays valid */
+    KWinMode *mode = g_new0(KWinMode, 1);
+    mode->mode = mode_obj;
 
-    kde_output_device_mode_v2_add_listener(mode_obj, &mode_listener, &mode);
-    g_array_append_val(output->modes, mode);
+    g_ptr_array_add(output->modes, mode);
+    kde_output_device_mode_v2_add_listener(mode_obj, &mode_listener, mode);
 }
 
 static void output_handle_done(void *data,
@@ -191,7 +184,7 @@ static void output_handle_done(void *data,
 
     /* Find preferred mode */
     for (guint i = 0; i < output->modes->len; i++) {
-        KWinMode *mode = &g_array_index(output->modes, KWinMode, i);
+        KWinMode *mode = g_ptr_array_index(output->modes, i);
         if (mode->preferred) {
             output->preferred_mode = mode;
             break;
@@ -348,13 +341,16 @@ static void registry_handle_global(void *data, struct wl_registry *registry,
             return;
         }
 
+        /* Bind to MIN_OUTPUT_DEVICE_VERSION - we only support events up to v2
+         * and binding to a higher version would cause crashes as the compositor
+         * would send events we don't have handlers for */
         struct kde_output_device_v2 *device =
             wl_registry_bind(registry, name, &kde_output_device_v2_interface,
-                            MIN(version, (uint32_t)kde_output_device_v2_interface.version));
+                            MIN_OUTPUT_DEVICE_VERSION);
 
         KWinOutput *output = g_new0(KWinOutput, 1);
         output->device = device;
-        output->modes = g_array_new(FALSE, TRUE, sizeof(KWinMode));
+        output->modes = g_ptr_array_new();
         output->scale = 1.0;
         output->enabled = TRUE;
 
@@ -405,10 +401,12 @@ VDAgentKWin *vdagent_kwin_create(GHashTable *connector_mapping)
     kwin->connector_mapping = g_hash_table_ref(connector_mapping);
     kwin->outputs = g_array_new(FALSE, TRUE, sizeof(KWinOutput*));
 
+    syslog(LOG_INFO, "kwin: attempting to connect to Wayland display");
+
     /* Connect to Wayland display */
     kwin->display = wl_display_connect(NULL);
     if (!kwin->display) {
-        syslog(LOG_DEBUG, "kwin: failed to connect to Wayland display");
+        syslog(LOG_INFO, "kwin: failed to connect to Wayland display");
         vdagent_kwin_destroy(kwin);
         return NULL;
     }
@@ -425,7 +423,7 @@ VDAgentKWin *vdagent_kwin_create(GHashTable *connector_mapping)
 
     /* Check if we got the required protocols */
     if (!kwin->output_management) {
-        syslog(LOG_DEBUG, "kwin: kde_output_management_v2 not available (not KDE?)");
+        syslog(LOG_INFO, "kwin: kde_output_management_v2 not available (not KDE?)");
         vdagent_kwin_destroy(kwin);
         return NULL;
     }
@@ -481,12 +479,13 @@ static void kwin_output_destroy(KWinOutput *output)
 
     if (output->modes) {
         for (guint i = 0; i < output->modes->len; i++) {
-            KWinMode *mode = &g_array_index(output->modes, KWinMode, i);
+            KWinMode *mode = g_ptr_array_index(output->modes, i);
             if (mode->mode) {
                 kde_output_device_mode_v2_destroy(mode->mode);
             }
+            g_free(mode);
         }
-        g_array_free(output->modes, TRUE);
+        g_ptr_array_free(output->modes, TRUE);
     }
 
     if (output->device) {
@@ -583,7 +582,7 @@ static KWinMode *kwin_find_mode(KWinOutput *output, int width, int height)
     int best_refresh = 0;
 
     for (guint i = 0; i < output->modes->len; i++) {
-        KWinMode *mode = &g_array_index(output->modes, KWinMode, i);
+        KWinMode *mode = g_ptr_array_index(output->modes, i);
 
         if (mode->width == width && mode->height == height) {
             /* Prefer higher refresh rates */
