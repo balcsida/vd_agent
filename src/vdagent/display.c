@@ -500,7 +500,15 @@ void vdagent_display_set_monitor_config(VDAgentDisplay *display, VDAgentMonitors
             syslog(LOG_WARNING, "display: KWin set_monitor_config failed, falling back");
         }
 
-        // TODO: Add Mutter ApplyMonitorsConfig support here for GNOME Wayland
+        // Try Mutter (for GNOME Wayland)
+        if (vdagent_mutter_is_available(display->mutter)) {
+            int ret = vdagent_mutter_set_monitor_config(display->mutter, mon_config);
+            if (ret == 0) {
+                vdagent_display_send_daemon_guest_res(display, TRUE);
+                return;
+            }
+            syslog(LOG_WARNING, "display: Mutter set_monitor_config failed, falling back");
+        }
 
         // No Wayland backend available - send current resolution back
         vdagent_display_send_daemon_guest_res(display, TRUE);

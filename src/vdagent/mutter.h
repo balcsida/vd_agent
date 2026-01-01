@@ -22,6 +22,8 @@
 #ifndef SRC_VDAGENT_MUTTER_H_
 #define SRC_VDAGENT_MUTTER_H_
 
+#include <spice/vd_agent.h>
+
 typedef struct VDAgentMutterDBus VDAgentMutterDBus;
 
 VDAgentMutterDBus *vdagent_mutter_create(GHashTable *connector_mapping);
@@ -29,5 +31,7 @@ void vdagent_mutter_destroy(VDAgentMutterDBus *mutter);
 
 GArray *vdagent_mutter_get_resolutions(VDAgentMutterDBus *mutter, int *width, int *height, int *screen_count);
 
+gboolean vdagent_mutter_is_available(VDAgentMutterDBus *mutter);
+int vdagent_mutter_set_monitor_config(VDAgentMutterDBus *mutter, VDAgentMonitorsConfig *mon_config);
 
 #endif /* SRC_VDAGENT_MUTTER_H_ */
